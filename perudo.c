@@ -46,10 +46,10 @@ int main(){
     struct Player players[num_players];
     play.id_current = 0;
     play.id_last = 0;
-    play.dice = 0;
-    play.number= 0;
+    play.dice = 1;
+    play.number= 1;
     play.paco_bet  = 0; //false
-    for(int i=0; i<6; i++){
+    for(int i=0; i<MAX_PLAYERS; i++){
         if(i < num_players){
             players[i].id = i;
             for(int j = 0 ; j < NUM_DICES; j++){
@@ -62,8 +62,10 @@ int main(){
         }
       
     }
+    /*
     printf("What's your name?\n");
     scanf("%s",players[0].name);
+    */
     pthread_t dealer;
 
 
@@ -79,49 +81,144 @@ void *dealer_func(void *args){
     int action;
     struct Player *players = (struct Player *) args;
     while(game_on == 1){
-        printf("Continue game [1] Exit[2]\n");
-        scanf("%d",&game_on);
-        printf("Dice player: %d number player: %d\n",play.dice,play.number);
         for(int i=0; i<6;i++){
             if(players[i].id == 0)
             {
                 //Jugador
-                
-                printf("jugador: %d\n",i);
                 //actualitzem valors ultim jugador i actual
+                printf("-------------------------\n");
+                printf("Continue game [1] Exit[2]\n");
+                scanf("%d",&game_on);
+                if(game_on == 2) break;
+                
                 play.id_last = play.id_current;
                 play.id_current  = players[i].id;
+                
+                printf("Actual player: %d Last player: %d \n",play.id_current,play.id_last);
+                printf("Actual bet: D:%d N:%d\n",play.dice,play.number);
+                
                 pthread_create(&players[i].id_thread, NULL, user_func,players);
                 pthread_join(players[i].id_thread,NULL);
+                
+                printf("-------------------------\n");
+                printf("Daus: \n");
+                for (int j = 0; j < NUM_DICES; j++)
+                {
+                    printf("%d ",players[i].dice[j]);
+                }
+                
+                printf("\n-------------------------\n");
+
             }
             else if (players[i].id != -1)
             {
                 //Maquina
-
-                printf("jugador: %d\n",i);
                 //actualitzem valors ultim jugador i actual
+                printf("-------------------------\n");
+
                 play.id_last = play.id_current;
-                play.id_current  = players[i].id;
+                play.id_current = players[i].id;
+
+                printf("Actual player: %d Last player: %d \n",play.id_current,play.id_last);
+                printf("Actual bet: D:%d N:%d\n",play.dice,play.number);
+                
                 pthread_create(&players[i].id_thread, NULL, machine_func,players);
                 pthread_join(players[i].id_thread,NULL);
+                
+                printf("-------------------------\n");
+                printf("Daus: \n");
+                for (int j = 0; j < NUM_DICES; j++)
+                {
+
+                    printf("%d ",players[i].dice[j]);
+                }
+                
+                printf("\n-------------------------\n");
             }
-            else
-            {
-                printf("-1\n");
-            }
+       
         }      
     }
     pthread_exit(0);
 }
+void shuffle_dices(void *args){
+    struct Player *players = (struct Player *) args;
+    for(int i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(players[i].id != -1 )
+        {
+            for(int j= 0; j < NUM_DICES; j++)
+            {
+                if(players[i].dice[j] != -1) players[i].dice[j] = (rand() % 6)+1;
+            }
+        }
+    }
+}
 
+
+void dudo(void *args){
+
+    struct Player *players = (struct Player *) args;
+    int count = 0;
+        
+    //Contem el nombre de daus amb el numero play.number i el nombre de jokers (1)
+
+    for(int i = 0; i < MAX_PLAYERS; i++){
+        if(players[i].id != -1){
+            for(int j = 0; j < NUM_DICES; j++)
+            {   
+                if(players[i].dice[j] == play.dice || players[i].dice[j] == 1)
+                {
+                    count++;
+                }
+            }   
+        }
+    }
+    printf("Count Dudo = %d\n",count);
+
+    //Comprovem qui ha guanyat i restem un dau posantlo a -1
+    if(count > play.number){
+        for(int i = 0; i < NUM_DICES; i++){
+            if(players[play.id_current].dice[i] != -1){
+                players[play.id_current].dice[i] = -1;
+                printf("\nJugador %d Perd dau \n",players[play.id_current].id);
+
+                if(i ==(NUM_DICES-1)){
+                    printf("\nJugador %d Eliminat \n",players[play.id_current].id);
+                    players[play.id_current].id = -1;
+                }
+                break;
+            } 
+        }
+    }
+    else
+    {
+        for(int i = 0; i < NUM_DICES; i++){
+            if(players[play.id_last].dice[i] != -1){
+                players[play.id_last].dice[i] = -1;
+                printf("\nJugador %d Perd dau \n",players[play.id_last].id);
+
+                if(i ==(NUM_DICES-1)){
+                    printf("\nJugador %d Eliminat \n",players[play.id_last].id);
+
+                    players[play.id_last].id = -1;
+                }
+                break;
+            }
+        }
+    }
+
+
+
+}
 void *user_func(void *args){
     struct Player *players = (struct Player *) args;
     int dice,number = 0;
     int action;
     printf("Bid [0] , Dudo [1], Exit[2]\n");
     scanf("%d", &action);
-    if(action == 0){ //Bid
-        while(dice > 6 || dice < 1 || number < 1 || (number <= play.number && dice <= play.dice))
+    if(action == 0) //Bid
+    { 
+        while(dice > 6 || dice < 1 || number < 1 || number < play.number || (dice <= play.dice && number <= play.number) || dice < play.dice )
         {
             printf("Bid: \n");
             scanf("%d %d", &dice, &number);
@@ -132,39 +229,13 @@ void *user_func(void *args){
     }
     else if (action == 1) //Dudo
     {
-        int count = 0;
-        printf("DUDO: %d %d\n",play.dice, play.number);
         
-        //Contem el nombre de daus amb el numero play.number i el nombre de jokers 1
-        for(int i = 0; i < MAX_PLAYERS; i++){
-            if(players[i].id != -1){
-                for(int j = 0; j < NUM_DICES; j++)
-                {   
-                    if(players[i].dice[j] == play.dice || players[i].dice[j] == 1)
-                    {
-                        count++;
-                    }
-                }   
-            }
-        }
-        printf("Count = %d",count);
+        dudo(players);
+        play.dice = 0;
+        play.number = 0;
+        shuffle_dices(players);
 
-        //Comprovem qui ha guanyat i restem un dau posantlo a -1
-        if(play.number >= count){
-            for(int i = 0; i < NUM_DICES; i++){
-                if(players[0].dice[i] != -1){
-                    players[0].dice[i] == -1;
-                } 
-            }
-        }
-        else
-        {
-            for(int i = 0; i < NUM_DICES; i++){
-                if(players[play.id_last].dice[i] != -1){
-                    players[play.id_last].dice[i] == -1;
-                }
-            }
-        }
+        
     }
     else if (action == 2) //Exit
     {
@@ -184,51 +255,23 @@ void *machine_func(void *args){
     if(action == 0) // Bid
     {
         //random dice and number
-        while(dice > 6 || dice < 1 || number < 1 || (number <= play.number && dice <= play.dice)){
+        while(dice > 6 || dice < 1 || number < 1 || number < play.number || (dice <= play.dice && number <= play.number) || dice < play.dice ){
             srand(time(0));
             dice  = (rand() % 6)+1;
-            number = (rand()% 12) +1;
+            number = (rand()% 30) +1;
         }
         play.number = number;
         play.dice = dice;
-               
     }
     else // Dudo
     {
-        int count = 0;
-        printf("DUDO: %d %d\n",play.dice, play.number);
-        
-        //Contem el nombre de daus amb el numero play.number i el nombre de jokers 1
-        for(int i = 0; i < MAX_PLAYERS; i++){
-            if(players[i].id != -1){
-                for(int j = 0; j < NUM_DICES; j++)
-                {   
-                    if(players[i].dice[j] == play.dice || players[i].dice[j] == 1)
-                    {
-                        count++;
-                    }
-                }   
-            }
-        }
-        printf("Count = %d",count);
+        dudo(players);
+        play.dice = 0;
+        play.number = 0;
+        shuffle_dices(players);
 
-        //Comprovem qui ha guanyat i restem un dau posantlo a -1
-        if(play.number >= count){
-            for(int i = 0; i < NUM_DICES; i++){
-                if(players[0].dice[i] != -1){
-                    players[0].dice[i] == -1;
-                } 
-            }
-        }
-        else
-        {
-            for(int i = 0; i < NUM_DICES; i++){
-                if(players[play.id_last].dice[i] != -1){
-                    players[play.id_last].dice[i] == -1;
-                }
-            }
-        }
     }
+    
     
     pthread_exit(0);
 
