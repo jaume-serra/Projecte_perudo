@@ -28,7 +28,7 @@ struct Play play;
 void *dealer_func(void *args);
 void *user_func(void *args);
 void *machine_func(void *args);
-
+void init_game(void *args);
 
 
 
@@ -38,13 +38,15 @@ int main(){
     //INIT
     srand(time(0));
     int num_players = 0;
-
+    struct Player players[MAX_PLAYERS];
+    init_game(players);
+    /*
     while(num_players > MAX_PLAYERS || num_players < MIN_PLAYERS){
         printf("How many players?\n");
         scanf("%d",&num_players);
     }
     
-    struct Player players[num_players];
+
     play.id_current = 0;
     play.id_last = 0;
     play.dice = 1;
@@ -64,7 +66,7 @@ int main(){
         }
       
     }
-
+    */
     pthread_t dealer;
 
 
@@ -265,8 +267,21 @@ void *user_func(void *args){
     struct Player *players = (struct Player *) args;
     int dice,number = 0;
     int action;
-    printf("Bid [0] , Dudo [1], Exit[2]\n");
-    scanf("%d", &action);
+    if(play.dice == 0 || play.number == 0){//comprovar que no comenci el torn
+        printf("Bid[0] Exit[2]\n");
+        scanf("%d", &action); 
+        while(action == 1)
+        {
+            printf("Bid[0] Exit[2]\n");
+            scanf("%d", &action); 
+        }
+    }
+    else
+    {
+        printf("Bid [0] , Dudo [1], Exit[2]\n");
+        scanf("%d", &action); 
+        
+    }
     if(action == 0) //Bid
     { 
         while(dice > 6 || dice < 1 || number < 1 || number < play.number || (dice <= play.dice && number <= play.number) || dice < play.dice )
@@ -315,6 +330,13 @@ void *machine_func(void *args){
     struct Player *players = (struct Player *) args;
     int dice,number = 0;
     int action = rand() % 2;
+    if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
+        while(action == 1)
+        {
+            action = rand() % 2;
+        }
+    }
+
     printf("action: %d\n",action);
     if(action == 0) // Bid
     {
