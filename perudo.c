@@ -24,13 +24,13 @@ struct Play {
 };
 
 struct Play play;
-
+void *pro_machine_func(void *arg);
 void *dealer_func(void *args);
 void *user_func(void *args);
 void *machine_func(void *args);
 void init_game(void *args);
 
-
+long factorial(int);
 
 
 
@@ -380,4 +380,50 @@ void *machine_func(void *args){
     
     pthread_exit(0);
 
+}
+
+
+
+void *pro_machine_func(void *args){
+    struct Player *players = (struct Player *) args;
+    int action;
+    int count, prob = 0;
+
+    if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
+        action = 0; //fem bid de dau 2 number 1 -> mínim
+    }
+
+    else //Calculem probabilitat i decidim accio
+    {
+        if(players[play.id_current].id != -1)
+        {
+            for(int i = 0; i < play.current_players; i++) //Sumatori de probabilitat
+            {
+
+                //Binomial B(5, 1/3) p = 1/3 q= 2/3
+                int p = 1/3;
+                //factorial(play.current_players)/(factorial(p) * factorial(play.current_players - p));
+                //TODO: mirar webs:  http://elrincoinformatico.blogspot.com/2014/12/programacion-en-c-distribucion-binomial.html
+                //https://www.superprof.es/apuntes/escolar/matematicas/probabilidades/distribucion-binomial/problemas-y-ejercicios-de-la-distribucion-binomial.html
+            }
+
+
+        }
+
+    }
+
+
+
+
+    pthread_exit(0);
+
+}
+
+long factorial(int n)
+{
+    if (n == 0){
+        return 1;
+    }else{
+        return(n * factorial(n-1));
+    }
 }
