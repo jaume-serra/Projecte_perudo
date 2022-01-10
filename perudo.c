@@ -6,7 +6,7 @@
 
 #define MAX_PLAYERS 6  
 #define MIN_PLAYERS 2
-#define NUM_DICES 2
+#define NUM_DICES 5
 
 struct Player { 
     int id;
@@ -40,33 +40,6 @@ int main(){
     int num_players = 0;
     struct Player players[MAX_PLAYERS];
     init_game(players);
-    /*
-    while(num_players > MAX_PLAYERS || num_players < MIN_PLAYERS){
-        printf("How many players?\n");
-        scanf("%d",&num_players);
-    }
-    
-
-    play.id_current = 0;
-    play.id_last = 0;
-    play.dice = 1;
-    play.number= 4;
-    play.paco_bet  = 0; //false
-    play.current_players = num_players;
-    for(int i=0; i<MAX_PLAYERS; i++){
-        if(i < num_players){
-            players[i].id = i;
-            for(int j = 0 ; j < NUM_DICES; j++){
-                players[i].dice[j] = (rand() % 6)+1;
-            }
-        }
-        else
-        {
-            players[i].id = -1;
-        }
-      
-    }
-    */
     pthread_t dealer;
 
 
@@ -113,6 +86,7 @@ void *dealer_func(void *args){
     struct Player *players = (struct Player *) args;
     while(game_on == 1){
         for(int i=0; i < MAX_PLAYERS; i++){
+            
             if(play.current_players == 1){
                 for(int k=0; k < MAX_PLAYERS; k++)
                 {
@@ -131,20 +105,50 @@ void *dealer_func(void *args){
                 }
                 init_game(players);
             }
+            
             if(players[i].id == 0)
-            {
+            {   
+                //Printem el taulell
+                for(int k=0; k < MAX_PLAYERS; k++)
+                {
+                    if(players[k].id  != -1){
+                        for(int l=0; l < NUM_DICES; l++)
+                        {
+                            if(players[k].id == 0)
+                            {
+                                if(players[k].dice[l] != -1)
+                                {
+                                    printf("%d",players[k].dice[l]);
+                                }
+                            }
+                            else
+                            {
+                                if(players[k].dice[l] != -1)
+                                {
+                                    printf("X");
+                                }
+
+
+                            }
+                        }
+                        printf("|");
+                    }
+
+
+                    
+                }
+                printf("\n");
                 //Jugador
                 //actualitzem valors ultim jugador i actual
                 printf("-------------------------\n");
                 printf("Continue game [1] Exit[2]\n");
+
                 scanf("%d",&game_on);
                 if(game_on == 2) break;
                 
                 play.id_last = play.id_current;
                 play.id_current  = players[i].id;
                 
-                printf("Actual player: %d Last player: %d \n",play.id_current,play.id_last);
-                printf("Actual bet: D:%d N:%d\n",play.dice,play.number);
                 
                 pthread_create(&players[i].id_thread, NULL, user_func,players);
                 pthread_join(players[i].id_thread,NULL);
