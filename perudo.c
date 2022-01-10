@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <math.h>
 
+
+#define MAXN 40
 #define MAX_PLAYERS 6  
 #define MIN_PLAYERS 2
 #define NUM_DICES 5
@@ -21,6 +23,7 @@ struct Play {
     int number;
     int paco_bet; 
     int current_players;
+    int current_dices;
 };
 
 struct Play play;
@@ -30,8 +33,9 @@ void *user_func(void *args);
 void *machine_func(void *args);
 void init_game(void *args);
 
-long factorial(int);
+unsigned long int t[MAXN+1][MAXN+1];
 
+unsigned long int calc_binomial(int n, int x);
 
 
 int main(){
@@ -65,6 +69,7 @@ void init_game(void *args){
     play.number= 0;
     play.paco_bet  = 0; //false
     play.current_players = num_players;
+    play.current_dices = num_players * NUM_DICES;
     for(int i=0; i<MAX_PLAYERS; i++){
         if(i < num_players){
             players[i].id = i;
@@ -235,6 +240,7 @@ void dudo(void *args){
             if(players[play.id_current].dice[i] != -1){
                 players[play.id_current].dice[i] = -1;
                 printf("\nJugador %d Perd dau \n",players[play.id_current].id);
+                play.current_dices -= 1;
 
                 if(i ==(NUM_DICES-1)){
                     printf("\nJugador %d Eliminat \n",players[play.id_current].id);
@@ -251,6 +257,7 @@ void dudo(void *args){
             if(players[play.id_last].dice[i] != -1){
                 players[play.id_last].dice[i] = -1;
                 printf("\nJugador %d Perd dau \n",players[play.id_last].id);
+                play.current_dices -= 1;
 
                 if(i ==(NUM_DICES-1)){
                     printf("\nJugador %d Eliminat \n",players[play.id_last].id);
@@ -334,6 +341,31 @@ void *machine_func(void *args){
     struct Player *players = (struct Player *) args;
     int dice,number = 0;
     int action = rand() % 2;
+
+    //calcul prob
+
+    double p = 1/3;    
+    double q = 2/3;
+    double prob = 0;
+    //TODO: mirar webs:  http://elrincoinformatico.blogspot.com/2014/12/programacion-en-c-distribucion-binomial.html
+    //https://www.superprof.es/apuntes/escolar/matematicas/probabilidades/distribucion-binomial/problemas-y-ejercicios-de-la-distribucion-binomial.html
+    for(int j=play.number ; j <= play.current_dices; j++)
+    {
+        printf("\nCalc binomial: %lu\n",calc_binomial(play.current_dices,j));
+        printf("Num dice: %d Num j : %d\n",play.current_dices,j);
+        int a = play.current_dices-j;
+        prob += calc_binomial(play.current_dices, j) * pow(p,j) * pow(q,a);
+        printf("\nProbabilitat %f\n",prob);
+        
+
+    }
+    printf("Num_dices: %d actual_num: %d\n",play.current_dices, play.number);
+
+
+    //fi calcul prob
+
+
+
     if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
         while(action == 1)
         {
@@ -395,20 +427,33 @@ void *pro_machine_func(void *args){
 
     else //Calculem probabilitat i decidim accio
     {
-        if(players[play.id_current].id != -1)
+        
+        //Binomial B(5, 1/3) p = 1/3 q= 2/3
+        int p = 1/3;
+        int q = 2/3;
+        //TODO: mirar webs:  http://elrincoinformatico.blogspot.com/2014/12/programacion-en-c-distribucion-binomial.html
+        //https://www.superprof.es/apuntes/escolar/matematicas/probabilidades/distribucion-binomial/problemas-y-ejercicios-de-la-distribucion-binomial.html
+
+                 
+    
+
+        
+        
+        
+        
+        /*if(players[play.id_current].id != -1)
         {
             for(int i = 0; i < play.current_players; i++) //Sumatori de probabilitat
             {
 
-                //Binomial B(5, 1/3) p = 1/3 q= 2/3
-                int p = 1/3;
-                //factorial(play.current_players)/(factorial(p) * factorial(play.current_players - p));
-                //TODO: mirar webs:  http://elrincoinformatico.blogspot.com/2014/12/programacion-en-c-distribucion-binomial.html
-                //https://www.superprof.es/apuntes/escolar/matematicas/probabilidades/distribucion-binomial/problemas-y-ejercicios-de-la-distribucion-binomial.html
+               
+
+
+
             }
 
 
-        }
+        }*/
 
     }
 
@@ -419,11 +464,21 @@ void *pro_machine_func(void *args){
 
 }
 
-long factorial(int n)
-{
-    if (n == 0){
-        return 1;
-    }else{
-        return(n * factorial(n-1));
+
+
+unsigned long int calc_binomial(int m, int x) {
+    int n, k;
+
+    for (k = 0; k<=MAXN; k++) t[0][k] = 0;
+    for (n = 1; n<=MAXN; n++) t[n][0] = 1;
+
+    t[1][1] = 1;
+    for (n = 2; n<=MAXN; n++) {
+        for (k = 1; k < n; k++)
+            t[n][k] = t[n-1][k-1] + t[n-1][k];
+        t[n][n] = 1;
     }
+
+
+    return t[m][x];
 }
