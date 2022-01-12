@@ -32,10 +32,10 @@ void *dealer_func(void *args);
 void *user_func(void *args);
 void *machine_func(void *args);
 void init_game(void *args);
+double calc_prob(int dices, int number);
 
-unsigned long int t[MAXN+1][MAXN+1];
-
-unsigned long int calc_binomial(int n, int x);
+unsigned long int t[MAXN+1][MAXN+1]; //Taula binomial
+unsigned long int calc_binomial(int n, int x); //Funcio per crear la taula binomial
 
 
 int main(){
@@ -180,7 +180,7 @@ void *dealer_func(void *args){
                 printf("Actual player: %d Last player: %d \n",play.id_current,play.id_last);
                 printf("Actual bet: D:%d N:%d\n",play.dice,play.number);
                 
-                pthread_create(&players[i].id_thread, NULL, machine_func,players);
+                pthread_create(&players[i].id_thread, NULL, pro_machine_func,players);
                 pthread_join(players[i].id_thread,NULL);
                 
                 printf("-------------------------\n");
@@ -341,36 +341,10 @@ void *machine_func(void *args){
     struct Player *players = (struct Player *) args;
     int dice,number = 0;
     int action = rand() % 2;
-
-    //calcul prob
-
-    double p = 1/3;    
-    double q = 2/3;
-    double prob = 0;
-    //TODO: mirar webs:  http://elrincoinformatico.blogspot.com/2014/12/programacion-en-c-distribucion-binomial.html
-    //https://www.superprof.es/apuntes/escolar/matematicas/probabilidades/distribucion-binomial/problemas-y-ejercicios-de-la-distribucion-binomial.html
-    for(int j=play.number ; j <= play.current_dices; j++)
-    {
-        printf("\nCalc binomial: %lu\n",calc_binomial(play.current_dices,j));
-        printf("Num dice: %d Num j : %d\n",play.current_dices,j);
-        int a = play.current_dices-j;
-        prob += calc_binomial(play.current_dices, j) * pow(p,j) * pow(q,a);
-        printf("\nProbabilitat %f\n",prob);
+           
         
-
-    }
-    printf("Num_dices: %d actual_num: %d\n",play.current_dices, play.number);
-
-
-    //fi calcul prob
-
-
-
     if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
-        while(action == 1)
-        {
-            action = rand() % 2;
-        }
+        action = 0;
     }
 
     printf("action: %d\n",action);
@@ -415,56 +389,46 @@ void *machine_func(void *args){
 }
 
 
-
 void *pro_machine_func(void *args){
     struct Player *players = (struct Player *) args;
-    int action;
-    int count, prob = 0;
+    double prob_dice, prob_number = 0;
 
     if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
-        action = 0; //fem bid de dau 2 number 1 -> mínim
+        play.dice = 2; //fem bid de dau 2 number 1 -> mínim
+        play.number = 1;
     }
 
     else //Calculem probabilitat i decidim accio
     {
-        
-        //Binomial B(5, 1/3) p = 1/3 q= 2/3
-        int p = 1/3;
-        int q = 2/3;
-        //TODO: mirar webs:  http://elrincoinformatico.blogspot.com/2014/12/programacion-en-c-distribucion-binomial.html
-        //https://www.superprof.es/apuntes/escolar/matematicas/probabilidades/distribucion-binomial/problemas-y-ejercicios-de-la-distribucion-binomial.html
 
-                 
-    
-
+        if(play.dice < 6)  prob_dice = calc_prob(play.current_dices, play.number);
+        prob_number = calc_prob(play.current_dices, play.number +1);
+        printf("Calculs prob dau: %f i prob numb: %f\n",prob_dice,prob_number);        
         
-        
-        
-        
-        /*if(players[play.id_current].id != -1)
+        if( prob_dice > 0.40 || prob_number > 0.40)//Bid
         {
-            for(int i = 0; i < play.current_players; i++) //Sumatori de probabilitat
+            printf("Normal bet\n");
+            if(prob_dice > prob_number)
             {
-
-               
-
-
-
+                play.dice += 1;
             }
+            else
+            {
+                play.number += 1;
+            }
+        }
+        else //Dudo
+        {
+            printf("Dudo bet\n");
 
-
-        }*/
-
+            dudo(players);
+            play.dice = 0;
+            play.number = 0;
+            shuffle_dices(players);
+        }
     }
-
-
-
-
     pthread_exit(0);
-
 }
-
-
 
 unsigned long int calc_binomial(int m, int x) {
     int n, k;
@@ -481,4 +445,21 @@ unsigned long int calc_binomial(int m, int x) {
 
 
     return t[m][x];
+}
+double calc_prob(int dices, int number)
+{
+
+    //Variables probabilitat
+
+    double p = 0.33;    
+    double q = 0.66;
+    double prob = 0;
+
+    //Calcul probabilitat        
+
+    for(int j= 0 ; j <= number; j++)
+    {
+        prob += calc_binomial(dices, j) * pow(p,j) * pow(q,dices-j);
+    }
+    return 1-prob;
 }
