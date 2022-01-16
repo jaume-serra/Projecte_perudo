@@ -392,7 +392,7 @@ void *machine_func(void *args){
 void *pro_machine_func(void *args){
     struct Player *players = (struct Player *) args;
     double prob_dice, prob_number = 0;
-
+    int count_dices,count_number = 0;
     if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
         play.dice = 2; //fem bid de dau 2 number 1 -> mínim
         play.number = 1;
@@ -400,9 +400,23 @@ void *pro_machine_func(void *args){
 
     else //Calculem probabilitat i decidim accio
     {
-
-        if(play.dice < 6)  prob_dice = calc_prob(play.current_dices, play.number);
-        prob_number = calc_prob(play.current_dices, play.number +1);
+        /*
+        
+        1- Recorre els daus del jugador
+        2- Contar quants daus com play.dice o 1 té el jugador
+        3- Calcular prob restant daus jugador i el nombre real
+        
+        */
+        for(int i = 0; i < NUM_DICES; i++)
+        {
+            if(players[play.id_current].dice[i] != -1 && (players[play.id_current].dice[i] == play.dice || players[play.id_current].dice[i] == 1))
+            {
+                count_number++;
+            }
+            count_dices ++;
+        }
+        if(play.dice < 6)  prob_dice = calc_prob(play.current_dices-count_dices, play.number-count_number);
+        prob_number = calc_prob(play.current_dices-count_dices, play.number-count_number+1);
         printf("Calculs prob dau: %f i prob numb: %f\n",prob_dice,prob_number);        
         
         if( prob_dice > 0.40 || prob_number > 0.40)//Bid
@@ -446,6 +460,7 @@ unsigned long int calc_binomial(int m, int x) {
 
     return t[m][x];
 }
+
 double calc_prob(int dices, int number)
 {
 
