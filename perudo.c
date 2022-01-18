@@ -3,6 +3,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <math.h>
+#include <unistd.h>
 
 
 #define MAXN 40
@@ -24,14 +25,18 @@ struct Play {
     int paco_bet; 
     int current_players;
     int current_dices;
+    int level;
+    int palifico;
 };
 
 struct Play play;
-void *pro_machine_func(void *arg);
-void *dealer_func(void *args);
-void *user_func(void *args);
-void *machine_func(void *args);
-void init_game(void *args);
+struct Player players[MAX_PLAYERS];
+
+void *pro_machine_func();
+void *dealer_func();
+void *user_func( );
+void *machine_func();
+void init_game();
 double calc_prob(int dices, int number);
 
 unsigned long int t[MAXN+1][MAXN+1]; //Taula binomial
@@ -39,35 +44,42 @@ unsigned long int calc_binomial(int n, int x); //Funcio per crear la taula binom
 
 
 int main(){
-    //INIT
     srand(time(0));
     int num_players = 0;
-    struct Player players[MAX_PLAYERS];
-    init_game(players);
+    init_game();
     pthread_t dealer;
 
 
-    pthread_create(&dealer,NULL,dealer_func,players);
+    pthread_create(&dealer,NULL,dealer_func,NULL);
     pthread_join(dealer,NULL);
     return 0;
 }
 
-void init_game(void *args){
+void init_game(){
 
-    struct Player *players = (struct Player *) args;
     srand(time(0));
     int num_players = 0;
+    int level = -1;
 
     while(num_players > MAX_PLAYERS || num_players < MIN_PLAYERS){
         printf("How many players?\n");
         scanf("%d",&num_players);
     }
-    
+
+    while(level != 0 && level != 1)
+    {
+        printf("Low Level [0] High Level [1]\n");
+        scanf("%d",&level);
+    }
+
+
+    play.level = level;
     play.id_current = 0;
     play.id_last = 0;
     play.dice = 0;
     play.number= 0;
-    play.paco_bet  = 0; //false
+    play.paco_bet  = 0; //Comença a false
+    play.palifico  = 0; //Comença a false
     play.current_players = num_players;
     play.current_dices = num_players * NUM_DICES;
     for(int i=0; i<MAX_PLAYERS; i++){
@@ -85,10 +97,9 @@ void init_game(void *args){
     }
 }
 
-void *dealer_func(void *args){
+void *dealer_func(){
     int game_on = 1;
     int action;
-    struct Player *players = (struct Player *) args;
     while(game_on == 1){
         for(int i=0; i < MAX_PLAYERS; i++){
             
@@ -155,17 +166,11 @@ void *dealer_func(void *args){
                 play.id_current  = players[i].id;
                 
                 
-                pthread_create(&players[i].id_thread, NULL, user_func,players);
+                pthread_create(&players[i].id_thread, NULL, user_func,NULL);
                 pthread_join(players[i].id_thread,NULL);
                 
-                printf("-------------------------\n");
-                printf("Daus: \n");
-                for (int j = 0; j < NUM_DICES; j++)
-                {
-                    printf("%d ",players[i].dice[j]);
-                }
-                
-                printf("\n-------------------------\n");
+                printf("-------------------------\n");                
+                sleep(1);
 
             }
             else if (players[i].id != -1)
@@ -177,29 +182,32 @@ void *dealer_func(void *args){
                 play.id_last = play.id_current;
                 play.id_current = players[i].id;
 
-                printf("Actual player: %d Last player: %d \n",play.id_current,play.id_last);
-                printf("Actual bet: D:%d N:%d\n",play.dice,play.number);
-                
-                pthread_create(&players[i].id_thread, NULL, pro_machine_func,players);
-                pthread_join(players[i].id_thread,NULL);
-                
-                printf("-------------------------\n");
-                printf("Daus: \n");
-                for (int j = 0; j < NUM_DICES; j++)
+                printf("Actual player: %d \n",play.id_current);
+                printf("Last bet: D:%d N:%d\n",play.dice,play.number);
+                if(play.level == 0)
                 {
-
-                    printf("%d ",players[i].dice[j]);
+                    pthread_create(&players[i].id_thread, NULL, machine_func,NULL);
+                    pthread_join(players[i].id_thread,NULL);
                 }
-                
-                printf("\n-------------------------\n");
+                else
+                {
+                    pthread_create(&players[i].id_thread, NULL, pro_machine_func,NULL);
+                    pthread_join(players[i].id_thread,NULL);
+                }
+
+                printf("Player bet: D:%d N:%d\n",play.dice,play.number);
+
+                printf("-------------------------\n");
+                printf("\n");
+                //sleep(1);
             }
        
         }
     }
     pthread_exit(0);
 }
-void shuffle_dices(void *args){
-    struct Player *players = (struct Player *) args;
+void shuffle_dices(){
+
     for(int i = 0; i < MAX_PLAYERS; i++)
     {
         if(players[i].id != -1 )
@@ -213,9 +221,8 @@ void shuffle_dices(void *args){
 }
 
 
-void dudo(void *args){
+void dudo(){
 
-    struct Player *players = (struct Player *) args;
     int count = 0;
         
     //Contem el nombre de daus amb el numero play.number i el nombre de jokers (1)
@@ -241,11 +248,16 @@ void dudo(void *args){
                 players[play.id_current].dice[i] = -1;
                 printf("\nJugador %d Perd dau \n",players[play.id_current].id);
                 play.current_dices -= 1;
-
+                if(i == (NUM_DICES-2))
+                {
+                    printf("\nPalifico\n");
+                    play.palifico += 1;
+                }
                 if(i ==(NUM_DICES-1)){
                     printf("\nJugador %d Eliminat \n",players[play.id_current].id);
                     players[play.id_current].id = -1;
                     play.current_players -= 1;
+                    play.palifico -= 1;
                 }
                 break;
             } 
@@ -258,13 +270,17 @@ void dudo(void *args){
                 players[play.id_last].dice[i] = -1;
                 printf("\nJugador %d Perd dau \n",players[play.id_last].id);
                 play.current_dices -= 1;
-
+                if(i == (NUM_DICES-2))
+                {
+                    printf("\nPalifico\n");
+                    play.palifico += 1;
+                }
                 if(i ==(NUM_DICES-1)){
                     printf("\nJugador %d Eliminat \n",players[play.id_last].id);
 
                     players[play.id_last].id = -1;
                     play.current_players -= 1;
-
+                    play.palifico -= 1;
                 }
                 break;
             }
@@ -274,24 +290,18 @@ void dudo(void *args){
 
 
 }
-void *user_func(void *args){
-    struct Player *players = (struct Player *) args;
+void *user_func(){
     int dice,number = 0;
     int action;
     if(play.dice == 0 || play.number == 0){//comprovar que no comenci el torn
-        printf("Bid[0] Exit[2]\n");
-        scanf("%d", &action); 
-        while(action == 1)
-        {
-            printf("Bid[0] Exit[2]\n");
-            scanf("%d", &action); 
-        }
+        action = 0;
     }
     else
     {
-        printf("Bid [0] , Dudo [1], Exit[2]\n");
+        while(action != 0 && action != 1){
+        printf("Bid [0] , Dudo [1]\n");
         scanf("%d", &action); 
-        
+        }
     }
     if(action == 0) //Bid
     { 
@@ -299,14 +309,19 @@ void *user_func(void *args){
         {
             printf("Bid: \n");
             scanf("%d %d", &dice, &number);
-            if(dice == 1 && number >= round(play.number/2) && play.paco_bet == 0) //Bet on pacos
+            if(play.palifico > 0) //Hi ha un o mes jugadors amb un dau 
+            {
+                play.paco_bet = 0;
+            }
+
+            else if(dice == 1 && number >= round(play.number/2) && play.paco_bet == 0) //Bet on pacos
             {
                 printf("Paco bet");
                 play.paco_bet = 1;
                 break;
             }
 
-            if(dice != 1 && number >= (play.number*2)+1 && play.paco_bet == 1) //Returning normal bet
+            else if(dice != 1 && number >= (play.number*2)+1 && play.paco_bet == 1) //Returning normal bet
             {
                 printf("Normal bet");
                 play.paco_bet = 0;
@@ -319,26 +334,18 @@ void *user_func(void *args){
     }
     else if (action == 1) //Dudo
     {
-        
         dudo(players);
         play.dice = 0;
         play.number = 0;
         shuffle_dices(players);
-
-        
     }
-    else if (action == 2) //Exit
-    {
-        pthread_exit(0);
 
-    }
         
     pthread_exit(0);
   
 }
 
-void *machine_func(void *args){
-    struct Player *players = (struct Player *) args;
+void *machine_func(){
     int dice,number = 0;
     int action = rand() % 2;
            
@@ -347,15 +354,26 @@ void *machine_func(void *args){
         action = 0;
     }
 
-    printf("action: %d\n",action);
     if(action == 0) // Bid
     {
         //random dice and number
         while(dice > 6 || dice < 1 || number < 1 || number < play.number || (dice <= play.dice && number <= play.number) || dice < play.dice ){
             srand(time(0));
-            dice  = (rand() % 6)+1;
-            number = (rand()% 30) +1;
+            dice  = (rand() % NUM_DICES)+1;
+            number = (rand() % play.current_dices) +1;
             
+            if(play.number == play.current_dices ) //Comprovem que no arribi a nombres molt elevats
+            {
+                dudo(players);
+                play.dice = 0;
+                play.number = 0;
+                shuffle_dices(players);
+            }
+            if(play.palifico > 0) //Hi ha un o mes jugadors amb un dau 
+            {
+                play.paco_bet = 0;
+            }
+
             if(dice == 1 && number >= round(play.number/2) && play.paco_bet == 0) //Bet on pacos
             {
                 printf("Paco bet");
@@ -382,17 +400,16 @@ void *machine_func(void *args){
         shuffle_dices(players);
 
     }
-    
-    
+
     pthread_exit(0);
 
 }
 
 
-void *pro_machine_func(void *args){
-    struct Player *players = (struct Player *) args;
+void *pro_machine_func(){
     double prob_dice, prob_number = 0;
     int count_dices,count_number = 0;
+
     if(play.dice == 0 || play.number == 0){ //comprovar que no comenci el torn
         play.dice = 2; //fem bid de dau 2 number 1 -> mínim
         play.number = 1;
@@ -409,17 +426,17 @@ void *pro_machine_func(void *args){
         */
         for(int i = 0; i < NUM_DICES; i++)
         {
-            if(players[play.id_current].dice[i] != -1 && (players[play.id_current].dice[i] == play.dice || players[play.id_current].dice[i] == 1))
+            if(players[play.id_current].id != -1 && players[play.id_current].dice[i] != -1 && (players[play.id_current].dice[i] == play.dice || players[play.id_current].dice[i] == 1))
             {
-                count_number++;
+                count_number += 1;
             }
-            count_dices ++;
+            count_dices += 1;
         }
-        if(play.dice < 6)  prob_dice = calc_prob(play.current_dices-count_dices, play.number-count_number);
+
+        if(play.dice < 6)  prob_dice = calc_prob(play.current_dices, play.number);
         prob_number = calc_prob(play.current_dices-count_dices, play.number-count_number+1);
-        printf("Calculs prob dau: %f i prob numb: %f\n",prob_dice,prob_number);        
-        
-        if( prob_dice > 0.40 || prob_number > 0.40)//Bid
+
+        if( prob_dice > 0.50 || prob_number > 0.50)//Bid
         {
             printf("Normal bet\n");
             if(prob_dice > prob_number)
@@ -429,6 +446,12 @@ void *pro_machine_func(void *args){
             else
             {
                 play.number += 1;
+                if(play.number > play.current_dices){
+                    dudo(players);
+                    play.dice = 0;
+                    play.number = 0;
+                    shuffle_dices(players);
+                }
             }
         }
         else //Dudo
@@ -441,6 +464,8 @@ void *pro_machine_func(void *args){
             shuffle_dices(players);
         }
     }
+    prob_dice= 0;
+    prob_number = 0;
     pthread_exit(0);
 }
 
@@ -466,10 +491,18 @@ double calc_prob(int dices, int number)
 
     //Variables probabilitat
 
-    double p = 0.33;    
+    double p = 0.34;    
     double q = 0.66;
     double prob = 0;
 
+    /*
+    //Opcions diferents pacobet o palifico
+    if(play.paco_bet == 1 || play.palifico > 0)
+    {
+        p = 0.17;
+        q = 0.83;
+    }
+    */
     //Calcul probabilitat        
 
     for(int j= 0 ; j <= number; j++)
