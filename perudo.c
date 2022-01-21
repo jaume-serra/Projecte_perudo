@@ -246,7 +246,7 @@ void dudo()
 {
 
     int count = 0;
-
+    play.paco_bet = 0;
     // Contem el nombre de daus amb el numero play.number i el nombre de jokers (1)
 
     for (int i = 0; i < MAX_PLAYERS; i++)
@@ -497,6 +497,11 @@ void *pro_machine_func()
                 count_dices += 1;
             }
             prob_dice = calc_prob(play.current_dices,(play.number*2)+1);
+
+            if(prob_dice > 0.50)
+            {
+                play.paco_bet = 0;
+            }
         }
 
         if (prob_dice > 0.50 || prob_number > 0.50) // Bid
