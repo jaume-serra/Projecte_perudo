@@ -40,21 +40,13 @@ void *machine_func();
 void init_game();
 double calc_prob(int dices, int number);
 
-unsigned long int taula_binomial[MAXN + 1][MAXN + 1];       // Taula binomial
-unsigned long int calc_binomial(); // Funcio per crear la taula binomial
+unsigned long int taula_binomial[MAXN + 1][MAXN + 1]; // Taula binomial
+unsigned long int calc_binomial();                    // Funcio per crear la taula binomial
 
 /*
 TODO:
-    - Calcular una vegada només la binomial
-        ? Despres del tria jugador o sempre
-
 
     - Comprovar placifico Bet
-
-    - Afegir param p i q a la funcio calc_prob
-
-    ----------------------------------------
-    - Afegir/eliminar jugadors
 
 
 */
@@ -77,16 +69,16 @@ void init_game()
     srand(time(0));
     int num_players = 0;
     int level = -1;
-
+    printf("WELCOME TO PERUDO!\nThis game has been developed by Jaume Serra\n");
     while (num_players > MAX_PLAYERS || num_players < MIN_PLAYERS)
     {
-        printf("How many players?\n");
+        printf("\nHow many players?\n");
         scanf("%d", &num_players);
     }
 
     while (level != 0 && level != 1)
     {
-        printf("Dumm Players [0] or Smart Players [1]\n");
+        printf("Dumm Players [0] or Smart Players [1] ?\n");
         scanf("%d", &level);
     }
 
@@ -118,10 +110,10 @@ void init_game()
 
 void *dealer_func()
 {
-    int game_on = 1;
+    int game_on = 0;
     int action;
-    char taulell[6] = "EXYZQW";
-    while (game_on == 1)
+    char taulell[6] = "EXYZQW"; // Lletres pel taulell
+    while (game_on != 4)
     {
         for (int i = 0; i < MAX_PLAYERS; i++)
         {
@@ -144,12 +136,14 @@ void *dealer_func()
                     game_on = 2;
                     break;
                 }
-                init_game(players);
+                init_game();
             }
 
             if (players[i].id == 0)
             {
                 // Printem el taulell
+                printf("\n-------------------------\n");
+
                 for (int k = 0; k < MAX_PLAYERS; k++)
                 {
                     if (players[k].id != -1)
@@ -178,10 +172,114 @@ void *dealer_func()
                 // Jugador
                 // actualitzem valors ultim jugador i actual
                 printf("-------------------------\n");
-                printf("Continue game [1] Exit[2]\n");
+                printf("Turn Player: %d \n", players[i].id);
+                if (play.dice != 0 && play.number != 0)
+                {
+                    printf("Last bet  Dice:%d  Number:%d\n", play.dice, play.number);
+                }
+                else
+                {
+                    printf("New Round\n");
+                }
+                printf("-------------------------\n");
 
-                scanf("%d", &game_on);
+                game_on = 0;
+                while (game_on != 1 && game_on != 2 && game_on != 3 && game_on != 4)
+                {
+                    printf("Continue game [1], Start New Game [2], Add/Del Players [3], Exit[4]\n");
+                    scanf("%d", &game_on);
+                }
                 if (game_on == 2)
+                    init_game();
+
+                if (game_on == 3)
+                {
+                    int action_ad;
+                    int new_players;
+                    printf("Add [0] or Delete [1]\n");
+                    scanf("%d", &action_ad);
+
+                    if (action_ad == 0) // Afegir jugadors
+                    {
+
+                        printf("Hom many players? \n");
+                        scanf("%d", &new_players);
+
+                        if (play.current_players + new_players > MAX_PLAYERS) // Maxim nombre de jugadors
+                        {
+                            printf("ERROR! Max Number of Players\n");
+                            while (game_on != 1 && game_on != 2 && game_on != 4)
+                            {
+                                printf("Continue game [1], Start New Game [2], Exit[4]\n");
+                                scanf("%d", &game_on);
+                            }
+                        }
+                        else // Afegim jugadors
+                        {
+                            play.dice = 0;
+                            play.number = 0;
+                            play.paco_bet = 0;
+                            for (int i = 0; i < MAX_PLAYERS; i++)
+                            {
+                                if (new_players == 0)
+                                {
+                                    break;
+                                }
+
+                                if (players[i].id == -1)
+                                {
+                                    // assignem id i daus
+                                    players[i].id = i;
+                                    printf("Jugador amb ID: %d Afegit\n", players[i].id);
+
+                                    for (int j = 0; j < NUM_DICES; j++)
+                                    {
+                                        players[i].dice[j] = (rand() % 6) + 1;
+                                    }
+                                    play.current_players += 1;
+                                    new_players -= 1;
+                                }
+                            }
+                        }
+                    }
+                    else // Eliminar jugadors
+                    {
+                        printf("Hom many players? \n");
+                        scanf("%d", &new_players);
+                        if (play.current_players - new_players < MIN_PLAYERS)
+                        {
+                            printf("ERROR! Min Number of Players\n");
+                            while (game_on != 1 && game_on != 2 && game_on != 4)
+                            {
+                                printf("Continue game [1], Start New Game [2], Exit[4]\n");
+                                scanf("%d", &game_on);
+                            }
+                        }
+                        else // Eliminem jugadors
+                        {
+                            play.dice = 0;
+                            play.number = 0;
+                            play.paco_bet = 0;
+                            for (int i = 0; i < MAX_PLAYERS; i++)
+                            {
+                                if (new_players == 0)
+                                {
+                                    printf("New Round\n");
+                                    break;
+                                }
+                                if (players[i].id != -1 && players[i].id != 0)
+                                {
+                                    printf("Jugador amb ID: %d Eliminat\n", players[i].id);
+                                    players[i].id = -1;
+                                    new_players -= 1;
+                                    play.current_players -= 1;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (game_on == 4)
                     break;
 
                 play.id_last = play.id_current;
@@ -202,8 +300,15 @@ void *dealer_func()
                 play.id_last = play.id_current;
                 play.id_current = players[i].id;
 
-                printf("Actual player: %d \n", play.id_current);
-                printf("Last bet: D:%d N:%d\n", play.dice, play.number);
+                printf("Turn Player: %d \n", play.id_current);
+                if (play.dice != 0 && play.number != 0)
+                {
+                    printf("Last bet  Dice:%d  Number:%d\n", play.dice, play.number);
+                }
+                else
+                {
+                    printf("New Round\n");
+                }
                 if (play.level == 0)
                 {
                     pthread_create(&players[i].id_thread, NULL, machine_func, NULL);
@@ -214,8 +319,10 @@ void *dealer_func()
                     pthread_create(&players[i].id_thread, NULL, pro_machine_func, NULL);
                     pthread_join(players[i].id_thread, NULL);
                 }
-
-                printf("Player bet: D:%d N:%d\n", play.dice, play.number);
+                if (play.dice != 0 && play.number != 0)
+                {
+                    printf("Player %d bet  Dice:%d  Number:%d\n", play.id_current, play.dice, play.number);
+                }
 
                 printf("-------------------------\n");
                 printf("\n");
@@ -349,14 +456,14 @@ void *user_func()
 
             else if (dice == 1 && number >= round(play.number / 2) && play.paco_bet == 0 && paco_bet == 0) // Bet on pacos
             {
-                printf("Paco bet");
+                printf("Paco bet\n");
                 play.paco_bet = 1;
                 break;
             }
 
             else if (dice != 1 && number >= (play.number * 2) + 1 && play.paco_bet == 1) // Returning normal bet
             {
-                printf("Normal bet");
+                printf("Normal bet\n");
                 play.paco_bet = 0;
                 break;
             }
@@ -375,6 +482,19 @@ void *user_func()
         play.number = 0;
         shuffle_dices(players);
     }
+
+    /*
+    else // Add Players
+    {
+        int new_players = play.current_players; //Inici per entrar al while
+
+        while (MAX_PLAYERS < (new_players + play.current_players))
+        {
+            printf("How many players ?\n");
+            scanf("%d", &new_players);
+        }
+
+    }*/
 
     pthread_exit(0);
 }
@@ -414,14 +534,14 @@ void *machine_func()
 
             if (dice == 1 && number >= round(play.number / 2) && play.paco_bet == 0 && bet_pacos == 0) // Bet on pacos
             {
-                printf("Paco bet");
+                printf("Paco bet\n");
                 play.paco_bet = 1;
                 break;
             }
 
             if (dice != 1 && number >= (play.number * 2) + 1 && play.paco_bet == 1) // Returning normal bet
             {
-                printf("Normal bet");
+                printf("Normal bet\n");
                 play.paco_bet = 0;
                 break;
             }
@@ -450,7 +570,7 @@ void *pro_machine_func()
     int count_dices, count_number = 0;
 
     if (play.dice == 0 || play.number == 0) // comprovar que no comenci el torn
-    {                  
+    {
         play.dice = 2; // fem bid de dau 2 number 1 -> mínim
         play.number = 1;
     }
@@ -487,7 +607,7 @@ void *pro_machine_func()
         {
             play.dice = 2;
 
-            for(int j = 0; j < NUM_DICES ; j++)
+            for (int j = 0; j < NUM_DICES; j++)
             {
                 if (players[play.id_current].id != -1 && players[play.id_current].dice[j] != -1 && (players[play.id_current].dice[j] == play.dice || players[play.id_current].dice[j] == 1))
                 {
@@ -495,14 +615,13 @@ void *pro_machine_func()
                 }
                 count_dices += 1;
             }
-            prob_dice = calc_prob(play.current_dices,(play.number*2)+1);
+            prob_dice = calc_prob(play.current_dices, (play.number * 2) + 1);
 
-            if(prob_dice > 0.50)
+            if (prob_dice > 0.50)
             {
                 play.paco_bet = 0;
             }
         }
-
         if (prob_dice > 0.50 || prob_number > 0.50) // Bid
         {
             printf("Normal bet\n");
