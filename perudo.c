@@ -5,19 +5,19 @@
 #include <math.h>
 #include <unistd.h>
 
-#define MAXN 40
+#define MAXN 40 // Número màxim de files a la distribució binomial
 #define MAX_PLAYERS 6
 #define MIN_PLAYERS 2
 #define NUM_DICES 5
 
-struct Player
+struct Player // Estructura general dels jugadors
 {
     int id;
     pthread_t id_thread;
     char dice[5];
 };
 
-struct Play
+struct Play // Estructura de la partida
 {
     int id_last;
     int id_current;
@@ -41,17 +41,9 @@ void init_game();
 double calc_prob(int dices, int number);
 
 unsigned long int taula_binomial[MAXN + 1][MAXN + 1]; // Taula binomial
-unsigned long int calc_binomial();                    // Funcio per crear la taula binomial
+unsigned long int calc_binomial();                    // Funció per omplir la taula binomial
 
-/*
-TODO:
-
-    - Comprovar placifico Bet
-
-
-*/
-
-int main()
+int main() // Funció principal de setup
 {
     srand(time(0));
     init_game();
@@ -63,16 +55,17 @@ int main()
     return 0;
 }
 
-void init_game()
+void init_game() // Inicialitza una partida nova
 {
 
     srand(time(0));
     int num_players = 0;
     int level = -1;
+    printf("\n-------------------------\n");
     printf("WELCOME TO PERUDO!\nThis game has been developed by Jaume Serra\n");
     while (num_players > MAX_PLAYERS || num_players < MIN_PLAYERS)
     {
-        printf("\nHow many players?\n");
+        printf("\nHow many players? [2-6]\n");
         scanf("%d", &num_players);
     }
 
@@ -108,14 +101,14 @@ void init_game()
     }
 }
 
-void *dealer_func()
+void *dealer_func() // Printa el taulell i organitza la partida i els threads
 {
     int game_on = 0;
     int action;
     char taulell[6] = "EXYZQW"; // Lletres pel taulell
     while (game_on != 4)
     {
-        for (int i = 0; i < MAX_PLAYERS; i++)
+        for (int i = 0; i < MAX_PLAYERS; i++) // Comporvem que no s'hagi acabat la partida
         {
 
             if (play.current_players == 1)
@@ -141,6 +134,7 @@ void *dealer_func()
 
             if (players[i].id == 0)
             {
+                // Jugador
                 // Printem el taulell
                 printf("\n-------------------------\n");
 
@@ -169,7 +163,7 @@ void *dealer_func()
                     }
                 }
                 printf("\n");
-                // Jugador
+
                 // actualitzem valors ultim jugador i actual
                 printf("-------------------------\n");
                 printf("Turn Player: %d \n", players[i].id);
@@ -190,7 +184,11 @@ void *dealer_func()
                     scanf("%d", &game_on);
                 }
                 if (game_on == 2)
+                {
                     init_game();
+                    printf("New Round\n");
+                    printf("-------------------------\n");
+                }
 
                 if (game_on == 3)
                 {
@@ -279,7 +277,7 @@ void *dealer_func()
                     }
                 }
 
-                if (game_on == 4)
+                if (game_on == 4) // Sortim de la partida
                     break;
 
                 play.id_last = play.id_current;
@@ -289,7 +287,7 @@ void *dealer_func()
                 pthread_join(players[i].id_thread, NULL);
 
                 printf("-------------------------\n");
-                // sleep(1);
+                sleep(1); // Millor jugabilitat
             }
             else if (players[i].id != -1)
             {
@@ -325,14 +323,13 @@ void *dealer_func()
                 }
 
                 printf("-------------------------\n");
-                printf("\n");
                 sleep(1);
             }
         }
     }
     pthread_exit(0);
 }
-void shuffle_dices()
+void shuffle_dices() // Tornem a assignar daus a tots els jugadors actuals
 {
 
     for (int i = 0; i < MAX_PLAYERS; i++)
@@ -348,7 +345,7 @@ void shuffle_dices()
     }
 }
 
-void dudo()
+void dudo() // Funció dudo que calcula el nombre de daus actuals i elimina un dau al jugador que perd
 {
 
     int count = 0;
@@ -379,16 +376,16 @@ void dudo()
             if (players[play.id_current].dice[i] != -1)
             {
                 players[play.id_current].dice[i] = -1;
-                printf("\nJugador %d Perd dau \n", players[play.id_current].id);
+                printf("Jugador %d Perd dau \n", players[play.id_current].id);
                 play.current_dices -= 1;
                 if (i == (NUM_DICES - 2))
                 {
-                    printf("\nPalifico\n");
+                    printf("Palifico\n");
                     play.palifico += 1;
                 }
                 if (i == (NUM_DICES - 1))
                 {
-                    printf("\nJugador %d Eliminat \n", players[play.id_current].id);
+                    printf("Jugador %d Eliminat \n", players[play.id_current].id);
                     players[play.id_current].id = -1;
                     play.current_players -= 1;
                     play.palifico -= 1;
@@ -404,16 +401,16 @@ void dudo()
             if (players[play.id_last].dice[i] != -1)
             {
                 players[play.id_last].dice[i] = -1;
-                printf("\nJugador %d Perd dau \n", players[play.id_last].id);
+                printf("Jugador %d Perd dau \n", players[play.id_last].id);
                 play.current_dices -= 1;
                 if (i == (NUM_DICES - 2))
                 {
-                    printf("\nPalifico\n");
+                    printf("Palifico\n");
                     play.palifico += 1;
                 }
                 if (i == (NUM_DICES - 1))
                 {
-                    printf("\nJugador %d Eliminat \n", players[play.id_last].id);
+                    printf("Jugador %d Eliminat \n", players[play.id_last].id);
 
                     players[play.id_last].id = -1;
                     play.current_players -= 1;
@@ -424,7 +421,7 @@ void dudo()
         }
     }
 }
-void *user_func()
+void *user_func() // Thread de l'usuari function
 {
     int dice, number = 0;
     int action;
@@ -483,23 +480,10 @@ void *user_func()
         shuffle_dices(players);
     }
 
-    /*
-    else // Add Players
-    {
-        int new_players = play.current_players; //Inici per entrar al while
-
-        while (MAX_PLAYERS < (new_players + play.current_players))
-        {
-            printf("How many players ?\n");
-            scanf("%d", &new_players);
-        }
-
-    }*/
-
     pthread_exit(0);
 }
 
-void *machine_func()
+void *machine_func() // Thread dumm machine function
 {
     int dice, number = 0;
     int action = rand() % 2;
@@ -564,7 +548,7 @@ void *machine_func()
     pthread_exit(0);
 }
 
-void *pro_machine_func()
+void *pro_machine_func() // Thread machine smart function. Utilitza distribucio binomial per calcular la probabilitat i després actua en conseqüència
 {
     double prob_dice, prob_number = 0;
     int count_dices, count_number = 0;
@@ -656,7 +640,7 @@ void *pro_machine_func()
     pthread_exit(0);
 }
 
-unsigned long int calc_binomial()
+unsigned long int calc_binomial() // Funció per omplir la taula binomial
 {
     int n, k;
 
@@ -674,7 +658,7 @@ unsigned long int calc_binomial()
     }
 }
 
-double calc_prob(int dices, int number)
+double calc_prob(int dices, int number) // Calcula la probabilitat de daus i number utilitzant la distribucio binomial
 {
 
     // Variables probabilitat
