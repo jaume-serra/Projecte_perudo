@@ -40,15 +40,14 @@ void *machine_func();
 void init_game();
 double calc_prob(int dices, int number);
 
-unsigned long int t[MAXN + 1][MAXN + 1];       // Taula binomial
-unsigned long int calc_binomial(int n, int x); // Funcio per crear la taula binomial
+unsigned long int taula_binomial[MAXN + 1][MAXN + 1];       // Taula binomial
+unsigned long int calc_binomial(); // Funcio per crear la taula binomial
 
 /*
 TODO:
     - Calcular una vegada només la binomial
         ? Despres del tria jugador o sempre
 
-    - Afegir Paco bet al smart player --> Doing
 
     - Comprovar placifico Bet
 
@@ -63,8 +62,8 @@ TODO:
 int main()
 {
     srand(time(0));
-    int num_players = 0;
     init_game();
+    calc_binomial();
     pthread_t dealer;
 
     pthread_create(&dealer, NULL, dealer_func, NULL);
@@ -87,7 +86,7 @@ void init_game()
 
     while (level != 0 && level != 1)
     {
-        printf("Low Level [0] High Level [1]\n");
+        printf("Dumm Players [0] or Smart Players [1]\n");
         scanf("%d", &level);
     }
 
@@ -96,8 +95,8 @@ void init_game()
     play.id_last = 0;
     play.dice = 0;
     play.number = 0;
-    play.paco_bet = 0; // Comença a false
-    play.palifico = 0; // Comença a false
+    play.paco_bet = 0; // Init a false
+    play.palifico = 0; // Init a false
     play.current_players = num_players;
     play.current_dices = num_players * NUM_DICES;
     for (int i = 0; i < MAX_PLAYERS; i++)
@@ -538,24 +537,22 @@ void *pro_machine_func()
     pthread_exit(0);
 }
 
-unsigned long int calc_binomial(int m, int x)
+unsigned long int calc_binomial()
 {
     int n, k;
 
     for (k = 0; k <= MAXN; k++)
-        t[0][k] = 0;
+        taula_binomial[0][k] = 0;
     for (n = 1; n <= MAXN; n++)
-        t[n][0] = 1;
+        taula_binomial[n][0] = 1;
 
-    t[1][1] = 1;
+    taula_binomial[1][1] = 1;
     for (n = 2; n <= MAXN; n++)
     {
         for (k = 1; k < n; k++)
-            t[n][k] = t[n - 1][k - 1] + t[n - 1][k];
-        t[n][n] = 1;
+            taula_binomial[n][k] = taula_binomial[n - 1][k - 1] + taula_binomial[n - 1][k];
+        taula_binomial[n][n] = 1;
     }
-
-    return t[m][x];
 }
 
 double calc_prob(int dices, int number)
@@ -571,7 +568,7 @@ double calc_prob(int dices, int number)
 
     for (int j = 0; j <= number; j++)
     {
-        prob += calc_binomial(dices, j) * pow(p, j) * pow(q, dices - j);
+        prob += taula_binomial[dices][j] * pow(p, j) * pow(q, dices - j);
     }
     return 1 - prob;
 }
